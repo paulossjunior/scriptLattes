@@ -347,6 +347,7 @@ class Grupo:
                     'ano_conclusao': getattr(item, 'anoConclusao', ''),
                     'descricao': getattr(item, 'descricao', '')
                 } for item in membro.listaFormacaoAcademica],
+                'atuacao_profissional': [item.json() for item in membro.listaAtuacaoProfissional],
                 'projetos_pesquisa': [item.json() for item in membro.listaProjetoDePesquisa],
                 'projetos_extensao': [item.json() for item in membro.listaProjetoDeExtensao],
                 'projetos_desenvolvimento': [item.json() for item in membro.listaProjetoDeDesenvolvimento],

@@ -16,6 +16,7 @@ from .producoesUnitarias.projetoDePesquisa import *
 from .producoesUnitarias.projetoDeExtensao import *
 from .producoesUnitarias.projetoDeDesenvolvimento import *
 from .producoesUnitarias.linhaDePesquisa import *
+from .producoesUnitarias.atuacaoProfissional import *
 
 from .producoesBibliograficas.artigoEmPeriodico import *
 from .producoesBibliograficas.livroPublicado import *
@@ -155,6 +156,7 @@ class ParserLattes(HTMLParser):
 
     listaIDLattesColaboradores = []
     listaFormacaoAcademica = []
+    listaAtuacaoProfissional = []
     listaProjetoDePesquisa = []
     listaProjetoDeExtensao = []
     listaProjetoDeDesenvolvimento = []
@@ -232,6 +234,7 @@ class ParserLattes(HTMLParser):
         self.issn = ''
         self.listaIDLattesColaboradores = []
         self.listaFormacaoAcademica = []
+        self.listaAtuacaoProfissional = []
         self.listaProjetoDePesquisa = []
         self.listaProjetoDeExtensao = []
         self.listaProjetoDeDesenvolvimento = []
@@ -534,8 +537,9 @@ class ParserLattes(HTMLParser):
                         iessimaFormacaoAcademica = FormacaoAcademica(self.partesDoItem) # criamos um objeto com a lista correspondentes às celulas da linha
                         self.listaFormacaoAcademica.append(iessimaFormacaoAcademica) # acrescentamos o objeto de FormacaoAcademica
 
-                    #if self.achouAtuacaoProfissional:
-                    #	print self.partesDoItem
+                    if self.achouAtuacaoProfissional and len(self.partesDoItem)>=2:
+                        iessimaAtuacaoProfissional = AtuacaoProfissional(self.idMembro, self.partesDoItem) # criamos um objeto com a lista correspondentes às celulas da linha
+                        self.listaAtuacaoProfissional.append(iessimaAtuacaoProfissional) # acrescentamos o objeto de AtuacaoProfissional
 
                     if self.achouProjetoDePesquisa:
                         if not self.salvarParte3:
@@ -801,7 +805,7 @@ class ParserLattes(HTMLParser):
                 self.achouEndereco = 1
             if 'Formação acadêmica/titulação'==dado:
                 self.achouFormacaoAcademica = 1
-            if 'Atuação Profissional'==dado:
+            if 'Atuação Profissional'==dado or 'AtuaÃ§Ã£o Profissional'==dado:
                 self.achouAtuacaoProfissional = 1
             if 'Projetos de pesquisa'==dado:
                 self.achouProjetoDePesquisa = 1

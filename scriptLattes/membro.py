@@ -34,6 +34,7 @@ class Membro:
     diretorioCache = ''  # diretorio de armazento de CVs (útil para extensas listas de CVs)
 
     listaFormacaoAcademica = []
+    listaAtuacaoProfissional = []
     listaProjetoDePesquisa = []
     listaProjetoDeExtensao = []
     listaProjetoDeDesenvolvimento = []
@@ -194,6 +195,7 @@ class Membro:
 
         self.listaIDLattesColaboradores = parser.listaIDLattesColaboradores
         self.listaFormacaoAcademica = parser.listaFormacaoAcademica
+        self.listaAtuacaoProfissional = parser.listaAtuacaoProfissional
         self.listaProjetoDePesquisa = parser.listaProjetoDePesquisa
         self.listaProjetoDeExtensao = parser.listaProjetoDeExtensao
         self.listaProjetoDeDesenvolvimento = parser.listaProjetoDeDesenvolvimento
