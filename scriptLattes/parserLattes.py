@@ -389,7 +389,7 @@ class ParserLattes(HTMLParser):
 
                 if name=='class' and (value=='layout-cell-pad-5 text-align-right' or value=='layout-cell-pad-6 text-align-right'): #update on Lattes HTML format 20/03/2024
                     self.item = ''
-                    if self.achouFormacaoAcademica or self.achouAtuacaoProfissional or self.achouProjetoDePesquisa or self.achouProjetoDeExtensao or self.achouMembroDeCorpoEditorial or self.achouRevisorDePeriodico or self.achouAreaDeAtuacao or self.achouIdioma or self.achouPremioOuTitulo or self.salvarItem:
+                    if self.achouFormacaoAcademica or self.achouAtuacaoProfissional or self.achouProjetoDePesquisa or self.achouProjetoDeExtensao or self.achouProjetoDeDesenvolvimento or self.achouMembroDeCorpoEditorial or self.achouRevisorDePeriodico or self.achouAreaDeAtuacao or self.achouIdioma or self.achouPremioOuTitulo or self.salvarItem:
                         self.salvarParte1 = 1
                         self.salvarParte2 = 0
                         if not self.salvarParte3:
@@ -550,11 +550,14 @@ class ParserLattes(HTMLParser):
                                 iessimoProjetoDeExtensao = ProjetoDeExtensao(self.idMembro, self.partesDoItem) # criamos um objeto com a lista correspondentes às celulas da linha
                                 self.listaProjetoDeExtensao.append(iessimoProjetoDeExtensao) # acrescentamos o objeto de ProjetoDeExtensao
 
-                    if self.achouProjetoDeDesenvolvimento and len(self.partesDoItem)>=2:
-                        iessimoProjetoDeDesenvolvimento = ProjetoDeDesenvolvimento(self.idMembro, self.partesDoItem) # criamos um objeto com a lista correspondentes às celulas da linha
-                        self.listaProjetoDeDesenvolvimento.append(iessimoProjetoDeDesenvolvimento) # acrescentamos o objeto de ProjetoDeDesenvolvimento
-                        self.partesDoItem = []  # limpamos a lista
-                        self.achouProjetoDeDesenvolvimento = 0
+                    if self.achouProjetoDeDesenvolvimento:
+                        if not self.salvarParte3:
+                            self.salvarParte3 = 1
+                        else:
+                            self.salvarParte3 = 0
+                            if len(self.partesDoItem)>=3:
+                                iessimoProjetoDeDesenvolvimento = ProjetoDeDesenvolvimento(self.idMembro, self.partesDoItem) # criamos um objeto com a lista correspondentes às celulas da linha
+                                self.listaProjetoDeDesenvolvimento.append(iessimoProjetoDeDesenvolvimento) # acrescentamos o objeto de ProjetoDeDesenvolvimento
 
                     #if self.achouMembroDeCorpoEditorial:
                     #	print self.partesDoItem
@@ -1171,6 +1174,12 @@ class ParserLattes(HTMLParser):
                 self.salvarParte3 = 0
 
         if self.achouProjetoDeExtensao:
+            if dado.startswith('Projeto certificado pelo(a) coordenador(a)') or dado.startswith('Projeto certificado pela empresa'):
+            #if u'Projeto certificado pelo(a) coordenador(a)' in dado or u'Projeto certificado pela empresa' in dado:
+                self.item = ''
+                self.salvarParte3 = 0
+
+        if self.achouProjetoDeDesenvolvimento:
             if dado.startswith('Projeto certificado pelo(a) coordenador(a)') or dado.startswith('Projeto certificado pela empresa'):
             #if u'Projeto certificado pelo(a) coordenador(a)' in dado or u'Projeto certificado pela empresa' in dado:
                 self.item = ''
