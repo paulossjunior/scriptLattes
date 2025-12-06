@@ -35,6 +35,8 @@ class Membro:
 
     listaFormacaoAcademica = []
     listaProjetoDePesquisa = []
+    listaProjetoDeExtensao = []
+    listaProjetoDeDesenvolvimento = []
     listaAreaDeAtuacao = []
     listaIdioma = []
     listaPremioOuTitulo = []
@@ -127,7 +129,7 @@ class Membro:
 
     def criarListaDePeriodos(self, periodoDoMembro):
         self.listaPeriodo = []
-        periodoDoMembro = re.sub('\s+', '', periodoDoMembro)
+        periodoDoMembro = re.sub(r'\s+', '', periodoDoMembro)
 
         if not periodoDoMembro:  # se nao especificado o periodo, entao aceitamos todos os items do CV Lattes
             self.listaPeriodo = [[0, 10000]]
@@ -192,6 +194,8 @@ class Membro:
         self.listaIDLattesColaboradores = parser.listaIDLattesColaboradores
         self.listaFormacaoAcademica = parser.listaFormacaoAcademica
         self.listaProjetoDePesquisa = parser.listaProjetoDePesquisa
+        self.listaProjetoDeExtensao = parser.listaProjetoDeExtensao
+        self.listaProjetoDeDesenvolvimento = parser.listaProjetoDeDesenvolvimento
         self.listaAreaDeAtuacao = parser.listaAreaDeAtuacao
         self.listaIdioma = parser.listaIdioma
         self.listaPremioOuTitulo = parser.listaPremioOuTitulo
@@ -321,6 +325,8 @@ class Membro:
 
         self.listaPremioOuTitulo = self.filtrarItems(self.listaPremioOuTitulo)
         self.listaProjetoDePesquisa = self.filtrarItems(self.listaProjetoDePesquisa)
+        self.listaProjetoDeExtensao = self.filtrarItems(self.listaProjetoDeExtensao)
+        self.listaProjetoDeDesenvolvimento = self.filtrarItems(self.listaProjetoDeDesenvolvimento)
 
         self.listaParticipacaoEmEvento = self.filtrarItems(self.listaParticipacaoEmEvento)
         self.listaOrganizacaoDeEvento = self.filtrarItems(self.listaOrganizacaoDeEvento)
@@ -406,7 +412,7 @@ class Membro:
                     return 1
 
         else:
-            if not objeto.ano.isdigit():  # se nao for identificado o ano sempre o mostramos na lista
+            if not str(objeto.ano).isdigit():  # se nao for identificado o ano sempre o mostramos na lista
                 objeto.ano = 0
                 return 1
                 #return 0
@@ -516,6 +522,8 @@ class Membro:
             s += "\n    - Patente                                     : " + str(len(self.listaPatente))
             s += "\t    - Projetos de pesquisa                        : " + str(len(self.listaProjetoDePesquisa))
             s += "\n    - Programa de computador                      : " + str(len(self.listaProgramaComputador))
+            s += "\t    - Projetos de extensão                        : " + str(len(self.listaProjetoDeExtensao))
+            s += "\t    - Projetos de desenvolvimento                 : " + str(len(self.listaProjetoDeDesenvolvimento))
             s += "\t    - Prêmios e títulos                           : " + str(len(self.listaPremioOuTitulo))
             s += "\n    - Desenho industrial                          : " + str(len(self.listaDesenhoIndustrial))
             s += "\t    - Participação em eventos                     : " + str(len(self.listaParticipacaoEmEvento))

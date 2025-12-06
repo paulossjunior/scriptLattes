@@ -84,6 +84,8 @@ class CompiladorDeListas:
 
         self.listaCompletaPremioOuTitulo = {}
         self.listaCompletaProjetoDePesquisa = {}
+        self.listaCompletaProjetoDeExtensao = {}
+        self.listaCompletaProjetoDeDesenvolvimento = {}
 
         self.listaCompletaParticipacaoEmEvento = {}
         self.listaCompletaOrganizacaoDeEvento = {}
@@ -169,6 +171,10 @@ class CompiladorDeListas:
                 # self.listaCompletaProjetoDePesquisa           = self.compilarListaDeProjetos(membro.listaProjetoDePesquisa, self.listaCompletaProjetoDePesquisa)
                 self.listaCompletaProjetoDePesquisa = self.compilarLista(membro.listaProjetoDePesquisa,
                                                                          self.listaCompletaProjetoDePesquisa)
+                self.listaCompletaProjetoDeExtensao = self.compilarLista(membro.listaProjetoDeExtensao,
+                                                                         self.listaCompletaProjetoDeExtensao)
+                self.listaCompletaProjetoDeDesenvolvimento = self.compilarLista(membro.listaProjetoDeDesenvolvimento,
+                                                                                self.listaCompletaProjetoDeDesenvolvimento)
         
                 self.listaCompletaParticipacaoEmEvento = self.compilarLista(membro.listaParticipacaoEmEvento,
                                                                             self.listaCompletaParticipacaoEmEvento)

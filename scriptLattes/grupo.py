@@ -4,6 +4,9 @@
 
 import fileinput
 import tqdm
+import json
+import re
+import os
 from scriptLattes.util import *
 from . import util
 from scriptLattes.membro import Membro
@@ -223,6 +226,461 @@ class Grupo:
         arquivo = open(dir + "/" + nomeArquivo, 'w', encoding='utf8')
         arquivo.write(string)  # .encode("utf8","ignore"))
         arquivo.close()  
+
+
+    def _parse_area_atuacao(self, descricao):
+        """Parse area de atuação description into structured components"""
+        import re
+        
+        # Initialize components
+        grande_area = ""
+        area = ""
+        subarea = ""
+        especialidade = ""
+        
+        if not descricao:
+            return grande_area, area, subarea, especialidade
+        
+        # Extract Grande área
+        match = re.search(r'Grande área:\s*([^/]+)', descricao)
+        if match:
+            grande_area = match.group(1).strip().rstrip('.')
+        
+        # Extract Área (after Grande área pattern)
+        match = re.search(r'(?:^|/)?\s*Área:\s*([^/]+)', descricao)
+        if match:
+            area = match.group(1).strip().rstrip('.')
+        
+        # Extract Subárea
+        match = re.search(r'(?:^|/)?\s*Subárea:\s*([^/]+?)(?:/Especialidade|$)', descricao)
+        if match:
+            subarea = match.group(1).strip().rstrip('.')
+        
+        # Extract Especialidade
+        match = re.search(r'Especialidade:\s*([^.]+?)(?:\.|$)', descricao)
+        if match:
+            especialidade = match.group(1).strip()
+        
+        return grande_area, area, subarea, especialidade
+
+    def _extrair_habilidade_idioma(self, proficiencia_completa, habilidade):
+        """Extrai uma habilidade específica da string de proficiência completa"""
+        import re
+        
+        if not proficiencia_completa:
+            return ""
+        
+        # Remove pontos finais e espaços desnecessários
+        texto = proficiencia_completa.strip().rstrip('.')
+        
+        # Padrão para extrair a habilidade específica
+        # Ex: "Compreende Bem", "Fala Razoavelmente", "Lê Bem", "Escreve Razoavelmente"
+        padrao = rf'{habilidade}\s+([^,]+)'
+        match = re.search(padrao, texto)
+        
+        if match:
+            nivel = match.group(1).strip()
+            return nivel
+        
+        return ""
+
+    def gerarArquivosJSONIndividuais(self):
+        # Create JSON directory
+        dir_saida = self.obterParametro('global-diretorio_de_saida')
+        json_dir = os.path.join(dir_saida, 'json')
+        util.criarDiretorio(json_dir)
+        
+        print('\n[GERANDO ARQUIVOS JSON INDIVIDUAIS POR PESQUISADOR]')
+        
+        for membro in self.listaDeMembros:
+            dados_pesquisador = {
+                'informacoes_pessoais': {
+                    'id_lattes': membro.idLattes,
+                    'nome_completo': membro.nomeCompleto,
+                    'nome_citacoes': membro.nomeEmCitacoesBibliograficas,
+                    'sexo': membro.sexo,
+                    'rotulo': membro.rotulo,
+                    'periodo': membro.periodo,
+                    'bolsa_produtividade': membro.bolsaProdutividade,
+                    'endereco_profissional': membro.enderecoProfissional,
+                    'atualizacao_cv': membro.atualizacaoCV,
+                    'url': membro.url,
+                    'texto_resumo': membro.textoResumo
+                },
+                'formacao_academica': [{
+                    'tipo': getattr(item, 'tipo', ''),
+                    'nome_instituicao': getattr(item, 'nomeInstituicao', ''),
+                    'ano_inicio': getattr(item, 'anoInicio', ''),
+                    'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                    'descricao': getattr(item, 'descricao', '')
+                } for item in membro.listaFormacaoAcademica],
+                'projetos_pesquisa': [{
+                    'nome': getattr(item, 'nome', ''),
+                    'ano_inicio': str(getattr(item, 'anoInicio', '')) if getattr(item, 'anoInicio', '') != '' else '',
+                    'ano_conclusao': str(getattr(item, 'anoConclusao', '')) if getattr(item, 'anoConclusao', '') != '' else '',
+                    'descricao': getattr(item, 'descricao', ''),
+                    'tipo': getattr(item, 'tipo', '')
+                } for item in membro.listaProjetoDePesquisa],
+                'projetos_extensao': [{
+                    'nome': getattr(item, 'nome', ''),
+                    'ano_inicio': str(getattr(item, 'anoInicio', '')) if getattr(item, 'anoInicio', '') != '' else '',
+                    'ano_conclusao': str(getattr(item, 'anoConclusao', '')) if getattr(item, 'anoConclusao', '') != '' else '',
+                    'descricao': getattr(item, 'descricao', ''),
+                    'tipo': getattr(item, 'tipo', '')
+                } for item in membro.listaProjetoDeExtensao],
+                'projetos_desenvolvimento': [{
+                    'nome': getattr(item, 'nome', ''),
+                    'ano_inicio': str(getattr(item, 'anoInicio', '')) if getattr(item, 'anoInicio', '') != '' else '',
+                    'ano_conclusao': str(getattr(item, 'anoConclusao', '')) if getattr(item, 'anoConclusao', '') != '' else '',
+                    'descricao': getattr(item, 'descricao', ''),
+                    'tipo': getattr(item, 'tipo', '')
+                } for item in membro.listaProjetoDeDesenvolvimento],
+                'areas_de_atuacao': [
+                    {
+                        'grande_area': parsed[0],
+                        'area': parsed[1], 
+                        'subarea': parsed[2],
+                        'especialidade': parsed[3],
+                        'descricao_completa': getattr(item, 'descricao', '')
+                    }
+                    for item in membro.listaAreaDeAtuacao
+                    for parsed in [self._parse_area_atuacao(getattr(item, 'descricao', ''))]
+                ],
+                'idiomas': [{
+                    'nome': getattr(item, 'nome', ''),
+                    'compreende': self._extrair_habilidade_idioma(getattr(item, 'proficiencia', ''), 'Compreende'),
+                    'fala': self._extrair_habilidade_idioma(getattr(item, 'proficiencia', ''), 'Fala'),
+                    'le': self._extrair_habilidade_idioma(getattr(item, 'proficiencia', ''), 'Lê'),
+                    'escreve': self._extrair_habilidade_idioma(getattr(item, 'proficiencia', ''), 'Escreve'),
+                    'proficiencia_completa': getattr(item, 'proficiencia', '')
+                } for item in membro.listaIdioma],
+                'premios_titulos': [{
+                    'descricao': getattr(item, 'descricao', ''),
+                    'ano': getattr(item, 'ano', '')
+                } for item in membro.listaPremioOuTitulo],
+                'producao_bibliografica': {
+                    'artigos_periodicos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'revista': getattr(item, 'revista', ''),
+                        'volume': getattr(item, 'volume', ''),
+                        'numero': getattr(item, 'numero', ''),
+                        'paginas': getattr(item, 'paginas', ''),
+                        'issn': getattr(item, 'issn', ''),
+                        'doi': getattr(item, 'doi', ''),
+                        'qualis': getattr(item, 'qualis', '')
+                    } for item in membro.listaArtigoEmPeriodico],
+                    'livros_publicados': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'editora': getattr(item, 'editora', ''),
+                        'cidade': getattr(item, 'cidade', ''),
+                        'isbn': getattr(item, 'isbn', ''),
+                        'paginas': getattr(item, 'paginas', '')
+                    } for item in membro.listaLivroPublicado],
+                    'capitulos_livros': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'titulo_livro': getattr(item, 'tituloDoLivro', ''),
+                        'editora': getattr(item, 'editora', ''),
+                        'cidade': getattr(item, 'cidade', ''),
+                        'isbn': getattr(item, 'isbn', ''),
+                        'paginas': getattr(item, 'paginas', '')
+                    } for item in membro.listaCapituloDeLivroPublicado],
+                    'trabalhos_completos_congressos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'evento': getattr(item, 'nomeDoEvento', ''),
+                        'cidade': getattr(item, 'cidade', ''),
+                        'paginas': getattr(item, 'paginas', ''),
+                        'isbn': getattr(item, 'isbn', '')
+                    } for item in membro.listaTrabalhoCompletoEmCongresso],
+                    'resumos_expandidos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'evento': getattr(item, 'nomeDoEvento', ''),
+                        'cidade': getattr(item, 'cidade', ''),
+                        'paginas': getattr(item, 'paginas', '')
+                    } for item in membro.listaResumoExpandidoEmCongresso],
+                    'resumos_congressos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'evento': getattr(item, 'nomeDoEvento', ''),
+                        'cidade': getattr(item, 'cidade', '')
+                    } for item in membro.listaResumoEmCongresso],
+                    'artigos_aceitos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'revista': getattr(item, 'revista', ''),
+                        'issn': getattr(item, 'issn', '')
+                    } for item in membro.listaArtigoAceito],
+                    'apresentacoes_trabalhos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'evento': getattr(item, 'nomeDoEvento', '')
+                    } for item in membro.listaApresentacaoDeTrabalho],
+                    'textos_jornais': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'jornal': getattr(item, 'nomeDoJornal', ''),
+                        'cidade': getattr(item, 'cidade', ''),
+                        'data': getattr(item, 'data', '')
+                    } for item in membro.listaTextoEmJornalDeNoticia],
+                    'outras_producoes': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'tipo': getattr(item, 'tipo', '')
+                    } for item in membro.listaOutroTipoDeProducaoBibliografica]
+                },
+                'producao_tecnica': {
+                    'softwares_com_patente': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'instituicao': getattr(item, 'instituicao', ''),
+                        'finalidade': getattr(item, 'finalidade', '')
+                    } for item in membro.listaSoftwareComPatente],
+                    'softwares_sem_patente': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'instituicao': getattr(item, 'instituicao', ''),
+                        'finalidade': getattr(item, 'finalidade', '')
+                    } for item in membro.listaSoftwareSemPatente],
+                    'produtos_tecnologicos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'tipo': getattr(item, 'tipo', ''),
+                        'finalidade': getattr(item, 'finalidade', '')
+                    } for item in membro.listaProdutoTecnologico],
+                    'processos_tecnicas': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'tipo': getattr(item, 'tipo', '')
+                    } for item in membro.listaProcessoOuTecnica],
+                    'trabalhos_tecnicos': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'tipo': getattr(item, 'tipo', '')
+                    } for item in membro.listaTrabalhoTecnico],
+                    'outras_producoes_tecnicas': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'tipo': getattr(item, 'tipo', '')
+                    } for item in membro.listaOutroTipoDeProducaoTecnica],
+                    'entrevistas': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'veiculo': getattr(item, 'veiculo', '')
+                    } for item in membro.listaEntrevista]
+                },
+                'patentes_registros': {
+                    'patentes': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'numero_registro': getattr(item, 'numeroRegistro', ''),
+                        'data': getattr(item, 'data', ''),
+                        'instituicao': getattr(item, 'instituicao', '')
+                    } for item in membro.listaPatente],
+                    'programas_computador': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'numero_registro': getattr(item, 'numeroRegistro', ''),
+                        'instituicao': getattr(item, 'instituicao', '')
+                    } for item in membro.listaProgramaComputador],
+                    'desenhos_industriais': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'numero_registro': getattr(item, 'numeroRegistro', ''),
+                        'instituicao': getattr(item, 'instituicao', '')
+                    } for item in membro.listaDesenhoIndustrial]
+                },
+                'producao_artistica': [{
+                    'titulo': getattr(item, 'titulo', ''),
+                    'ano': getattr(item, 'ano', ''),
+                    'autores': getattr(item, 'autores', ''),
+                    'tipo': getattr(item, 'tipo', ''),
+                    'evento': getattr(item, 'evento', '')
+                } for item in membro.listaProducaoArtistica],
+                'orientacoes': {
+                    'em_andamento': {
+                        'pos_doutorado': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOASupervisaoDePosDoutorado],
+                        'doutorado': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOATeseDeDoutorado],
+                        'mestrado': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOADissertacaoDeMestrado],
+                        'especializacao': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOAMonografiaDeEspecializacao],
+                        'tcc': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOATCC],
+                        'iniciacao_cientifica': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOAIniciacaoCientifica],
+                        'outros': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOAOutroTipoDeOrientacao]
+                    },
+                    'concluidas': {
+                        'pos_doutorado': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOCSupervisaoDePosDoutorado],
+                        'doutorado': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOCTeseDeDoutorado],
+                        'mestrado': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOCDissertacaoDeMestrado],
+                        'especializacao': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOCMonografiaDeEspecializacao],
+                        'tcc': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOCTCC],
+                        'iniciacao_cientifica': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOCIniciacaoCientifica],
+                        'outros': [{
+                            'titulo': getattr(item, 'titulo', ''),
+                            'ano_inicio': getattr(item, 'anoInicio', ''),
+                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
+                            'orientando': getattr(item, 'orientando', ''),
+                            'instituicao': getattr(item, 'instituicao', ''),
+                            'curso': getattr(item, 'curso', '')
+                        } for item in membro.listaOCOutroTipoDeOrientacao]
+                    }
+                },
+                'eventos': {
+                    'participacoes': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'tipo': getattr(item, 'tipo', ''),
+                        'natureza': getattr(item, 'natureza', ''),
+                        'evento': getattr(item, 'nomeDoEvento', '')
+                    } for item in membro.listaParticipacaoEmEvento],
+                    'organizacoes': [{
+                        'titulo': getattr(item, 'titulo', ''),
+                        'ano': getattr(item, 'ano', ''),
+                        'tipo': getattr(item, 'tipo', ''),
+                        'natureza': getattr(item, 'natureza', ''),
+                        'evento': getattr(item, 'nomeDoEvento', '')
+                    } for item in membro.listaOrganizacaoDeEvento]
+                },
+                'estatisticas': {
+                    'total_artigos_periodicos': len(membro.listaArtigoEmPeriodico),
+                    'total_livros': len(membro.listaLivroPublicado),
+                    'total_capitulos': len(membro.listaCapituloDeLivroPublicado),
+                    'total_trabalhos_congressos': len(membro.listaTrabalhoCompletoEmCongresso),
+                    'total_projetos_pesquisa': len(membro.listaProjetoDePesquisa),
+                    'total_projetos_extensao': len(membro.listaProjetoDeExtensao),
+                    'total_projetos_desenvolvimento': len(membro.listaProjetoDeDesenvolvimento),
+                    'total_orientacoes_concluidas': (len(membro.listaOCSupervisaoDePosDoutorado) + 
+                                                   len(membro.listaOCTeseDeDoutorado) + 
+                                                   len(membro.listaOCDissertacaoDeMestrado) + 
+                                                   len(membro.listaOCIniciacaoCientifica)),
+                    'total_orientacoes_andamento': (len(membro.listaOASupervisaoDePosDoutorado) + 
+                                                  len(membro.listaOATeseDeDoutorado) + 
+                                                  len(membro.listaOADissertacaoDeMestrado) + 
+                                                  len(membro.listaOAIniciacaoCientifica))
+                }
+            }
+            
+            # Nome do arquivo baseado no nome do pesquisador (sanitizado)
+            nome_arquivo = re.sub(r'[^\w\s-]', '', membro.nomeCompleto.strip())
+            nome_arquivo = re.sub(r'[-\s]+', '-', nome_arquivo)
+            nome_arquivo = f"{membro.idMembro:02d}_{nome_arquivo}_{membro.idLattes}.json"
+            
+            caminho_arquivo = os.path.join(json_dir, nome_arquivo)
+            
+            try:
+                with open(caminho_arquivo, 'w', encoding='utf-8') as arquivo:
+                    json.dump(dados_pesquisador, arquivo, ensure_ascii=False, indent=2)
+                print(f'   → {nome_arquivo}')
+            except Exception as e:
+                print(f'   ✗ Erro ao gerar {nome_arquivo}: {str(e)}')
+        
+        print(f'\n[ARQUIVOS JSON GERADOS EM: {json_dir}]')
 
 
     def gerarArquivoJSON(self, nomeArquivo):
