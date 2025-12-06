@@ -40,6 +40,7 @@ class Membro:
     listaAreaDeAtuacao = []
     listaIdioma = []
     listaPremioOuTitulo = []
+    listaLinhaDePesquisa = []
 
     listaIDLattesColaboradores = []
     listaIDLattesColaboradoresUnica = []
@@ -199,6 +200,7 @@ class Membro:
         self.listaAreaDeAtuacao = parser.listaAreaDeAtuacao
         self.listaIdioma = parser.listaIdioma
         self.listaPremioOuTitulo = parser.listaPremioOuTitulo
+        self.listaLinhaDePesquisa = parser.listaLinhaDePesquisa
         self.listaIDLattesColaboradoresUnica = set(self.listaIDLattesColaboradores)
 
         # Produção bibliográfica

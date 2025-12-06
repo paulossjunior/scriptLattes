@@ -175,6 +175,7 @@ class CompiladorDeListas:
                                                                          self.listaCompletaProjetoDeExtensao)
                 self.listaCompletaProjetoDeDesenvolvimento = self.compilarLista(membro.listaProjetoDeDesenvolvimento,
                                                                                 self.listaCompletaProjetoDeDesenvolvimento)
+                # Linhas de pesquisa não são compiladas - são individuais por membro
         
                 self.listaCompletaParticipacaoEmEvento = self.compilarLista(membro.listaParticipacaoEmEvento,
                                                                             self.listaCompletaParticipacaoEmEvento)

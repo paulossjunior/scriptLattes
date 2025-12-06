@@ -37,6 +37,7 @@ class ProjetoDeDesenvolvimento(ProjetoDePesquisa):
             # Fallback para inicialização manual se der erro
             self.idMembro = list([])
             self.idMembro.append(idMembro)
+            self.integrantes = []
             
             if len(partesDoItem) >= 2:
                 anos = partesDoItem[0].partition("-")
@@ -46,6 +47,9 @@ class ProjetoDeDesenvolvimento(ProjetoDePesquisa):
                 self.nome = partesDoItem[1].strip()
                 if len(partesDoItem) >= 3:
                     self.descricao = partesDoItem[2:]
+                    # Extrair integrantes da descrição se disponível
+                    if len(partesDoItem) >= 3 and partesDoItem[2]:
+                        self._extrair_integrantes(partesDoItem[2])
                 else:
                     self.descricao = []
             else:
@@ -57,13 +61,48 @@ class ProjetoDeDesenvolvimento(ProjetoDePesquisa):
             self.tipo = 'Projeto de desenvolvimento'
     
     def json(self):
-        return {
-            'nome': self.nome,
-            'ano_inicio': str(self.anoInicio) if hasattr(self, 'anoInicio') and self.anoInicio else '',
-            'ano_conclusao': str(self.anoConclusao) if hasattr(self, 'anoConclusao') and self.anoConclusao else '',
-            'descricao': self.descricao if hasattr(self, 'descricao') else '',
+        def nv(x):
+            return x if x not in (None, '', []) else None
+
+        # preparar integrantes para JSON
+        integrantes_json = []
+        if hasattr(self, 'integrantes') and self.integrantes:
+            integrantes_json = [
+                {
+                    "nome": integrante["nome"],
+                    "papel": integrante["papel"]
+                }
+                for integrante in self.integrantes
+            ]
+
+        # preparar financiadores para JSON
+        financiadores_json = []
+        if hasattr(self, 'financiadores') and self.financiadores:
+            financiadores_json = [
+                {
+                    "nome": financiador["nome"],
+                    "tipo_apoio": financiador["tipo_apoio"]
+                }
+                for financiador in self.financiadores
+            ]
+
+        result = {
+            'nome': nv(self.nome),
+            'ano_inicio': nv(str(self.anoInicio) if hasattr(self, 'anoInicio') and self.anoInicio else None),
+            'ano_conclusao': nv(str(self.anoConclusao) if hasattr(self, 'anoConclusao') and self.anoConclusao else None),
+            'descricao': nv(self.descricao if hasattr(self, 'descricao') else None),
             'tipo': self.tipo
         }
+
+        # Adicionar integrantes se existirem
+        if integrantes_json:
+            result["integrantes"] = integrantes_json
+
+        # Adicionar financiadores se existirem
+        if financiadores_json:
+            result["financiadores"] = financiadores_json
+
+        return result
     
     def html(self):
         s = '\n<p><b>' + str(self.nome).encode('utf8', 'replace').decode('utf8') + '</b><br>'

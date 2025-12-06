@@ -8,6 +8,39 @@ import json
 import re
 import os
 from scriptLattes.util import *
+
+def separar_tipo_instituicao(instituicao_completa):
+    """Separa tipo de trabalho da instituição"""
+    if not instituicao_completa:
+        return '', ''
+    
+    # Padrões para diferentes tipos de trabalho
+    # Ex: "Tese (Doutorado em...) - Universidade..."
+    # Ex: "Dissertação (Mestrado em...) - Universidade..."
+    # Ex: "(Graduação em...) - Universidade..."
+    match = re.match(r'^(.*?)\s*\(([^)]+)\)\s*-\s*(.+)$', instituicao_completa)
+    if match:
+        tipo_trabalho = match.group(1).strip()
+        curso = match.group(2).strip()
+        instituicao = match.group(3).strip()
+        
+        # Se não há tipo de trabalho explícito (ex: TCCs), inferir do curso
+        if not tipo_trabalho:
+            if curso.startswith('Graduação') or curso.startswith('Graduando'):
+                tipo_trabalho = 'Trabalho de Conclusão de Curso'
+            elif curso.startswith('Mestrado'):
+                tipo_trabalho = 'Dissertação'
+            elif curso.startswith('Doutorado'):
+                tipo_trabalho = 'Tese'
+            elif 'Especialização' in curso:
+                tipo_trabalho = 'Monografia'
+            else:
+                tipo_trabalho = 'Trabalho'
+        
+        return tipo_trabalho, instituicao
+    
+    # Se não conseguir separar, retorna como está
+    return '', instituicao_completa
 from . import util
 from scriptLattes.membro import Membro
 from scriptLattes.compiladorDeListas import CompiladorDeListas
@@ -314,27 +347,9 @@ class Grupo:
                     'ano_conclusao': getattr(item, 'anoConclusao', ''),
                     'descricao': getattr(item, 'descricao', '')
                 } for item in membro.listaFormacaoAcademica],
-                'projetos_pesquisa': [{
-                    'nome': getattr(item, 'nome', ''),
-                    'ano_inicio': str(getattr(item, 'anoInicio', '')) if getattr(item, 'anoInicio', '') != '' else '',
-                    'ano_conclusao': str(getattr(item, 'anoConclusao', '')) if getattr(item, 'anoConclusao', '') != '' else '',
-                    'descricao': getattr(item, 'descricao', ''),
-                    'tipo': getattr(item, 'tipo', '')
-                } for item in membro.listaProjetoDePesquisa],
-                'projetos_extensao': [{
-                    'nome': getattr(item, 'nome', ''),
-                    'ano_inicio': str(getattr(item, 'anoInicio', '')) if getattr(item, 'anoInicio', '') != '' else '',
-                    'ano_conclusao': str(getattr(item, 'anoConclusao', '')) if getattr(item, 'anoConclusao', '') != '' else '',
-                    'descricao': getattr(item, 'descricao', ''),
-                    'tipo': getattr(item, 'tipo', '')
-                } for item in membro.listaProjetoDeExtensao],
-                'projetos_desenvolvimento': [{
-                    'nome': getattr(item, 'nome', ''),
-                    'ano_inicio': str(getattr(item, 'anoInicio', '')) if getattr(item, 'anoInicio', '') != '' else '',
-                    'ano_conclusao': str(getattr(item, 'anoConclusao', '')) if getattr(item, 'anoConclusao', '') != '' else '',
-                    'descricao': getattr(item, 'descricao', ''),
-                    'tipo': getattr(item, 'tipo', '')
-                } for item in membro.listaProjetoDeDesenvolvimento],
+                'projetos_pesquisa': [item.json() for item in membro.listaProjetoDePesquisa],
+                'projetos_extensao': [item.json() for item in membro.listaProjetoDeExtensao],
+                'projetos_desenvolvimento': [item.json() for item in membro.listaProjetoDeDesenvolvimento],
                 'areas_de_atuacao': [
                     {
                         'grande_area': parsed[0],
@@ -358,6 +373,7 @@ class Grupo:
                     'descricao': getattr(item, 'descricao', ''),
                     'ano': getattr(item, 'ano', '')
                 } for item in membro.listaPremioOuTitulo],
+                'linhas_de_pesquisa': [item.json() for item in membro.listaLinhaDePesquisa if hasattr(item, 'json') and item.json() is not None],
                 'producao_bibliografica': {
                     'artigos_periodicos': [{
                         'titulo': getattr(item, 'titulo', ''),
@@ -523,128 +539,142 @@ class Grupo:
                 'orientacoes': {
                     'em_andamento': {
                         'pos_doutorado': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOASupervisaoDePosDoutorado],
                         'doutorado': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOATeseDeDoutorado],
                         'mestrado': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOADissertacaoDeMestrado],
                         'especializacao': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOAMonografiaDeEspecializacao],
                         'tcc': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOATCC],
                         'iniciacao_cientifica': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOAIniciacaoCientifica],
                         'outros': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOAOutroTipoDeOrientacao]
                     },
                     'concluidas': {
                         'pos_doutorado': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'ano_conclusao': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOCSupervisaoDePosDoutorado],
                         'doutorado': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'ano_conclusao': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOCTeseDeDoutorado],
                         'mestrado': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'ano_conclusao': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOCDissertacaoDeMestrado],
                         'especializacao': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'ano_conclusao': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOCMonografiaDeEspecializacao],
                         'tcc': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'ano_conclusao': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOCTCC],
                         'iniciacao_cientifica': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'ano_conclusao': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOCIniciacaoCientifica],
                         'outros': [{
-                            'titulo': getattr(item, 'titulo', ''),
-                            'ano_inicio': getattr(item, 'anoInicio', ''),
-                            'ano_conclusao': getattr(item, 'anoConclusao', ''),
-                            'orientando': getattr(item, 'orientando', ''),
-                            'instituicao': getattr(item, 'instituicao', ''),
+                            'titulo': getattr(item, 'tituloDoTrabalho', ''),
+                            'ano_inicio': getattr(item, 'ano', ''),
+                            'ano_conclusao': getattr(item, 'ano', ''),
+                            'orientando': getattr(item, 'nome', ''),
+                            'tipo_trabalho': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[0],
+                            'instituicao': separar_tipo_instituicao(getattr(item, 'instituicao', ''))[1],
                             'curso': getattr(item, 'curso', '')
                         } for item in membro.listaOCOutroTipoDeOrientacao]
                     }
                 },
                 'eventos': {
                     'participacoes': [{
-                        'titulo': getattr(item, 'titulo', ''),
+                        'evento': getattr(item, 'evento', ''),
+                        'apresentacao': getattr(item, 'apresentacao', ''),
                         'ano': getattr(item, 'ano', ''),
-                        'tipo': getattr(item, 'tipo', ''),
-                        'natureza': getattr(item, 'natureza', ''),
-                        'evento': getattr(item, 'nomeDoEvento', '')
+                        'tipo_evento': getattr(item, 'tipo_evento', ''),
+                        'tipo': getattr(item, 'tipo', '')
                     } for item in membro.listaParticipacaoEmEvento],
                     'organizacoes': [{
-                        'titulo': getattr(item, 'titulo', ''),
+                        'autores': getattr(item, 'autores', ''),
+                        'evento': getattr(item, 'nomeDoEvento', ''),
                         'ano': getattr(item, 'ano', ''),
-                        'tipo': getattr(item, 'tipo', ''),
                         'natureza': getattr(item, 'natureza', ''),
-                        'evento': getattr(item, 'nomeDoEvento', '')
+                        'tipo': getattr(item, 'tipo', '')
                     } for item in membro.listaOrganizacaoDeEvento]
                 },
                 'estatisticas': {

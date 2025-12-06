@@ -15,6 +15,7 @@ from .producoesUnitarias.premioOuTitulo import *
 from .producoesUnitarias.projetoDePesquisa import *
 from .producoesUnitarias.projetoDeExtensao import *
 from .producoesUnitarias.projetoDeDesenvolvimento import *
+from .producoesUnitarias.linhaDePesquisa import *
 
 from .producoesBibliograficas.artigoEmPeriodico import *
 from .producoesBibliograficas.livroPublicado import *
@@ -107,6 +108,7 @@ class ParserLattes(HTMLParser):
     achouAreaDeAtuacao = None
     achouIdioma = None
     achouPremioOuTitulo = None
+    achouLinhaDePesquisa = None
 
     achouArtigoEmPeriodico = None
     achouLivroPublicado = None
@@ -159,6 +161,7 @@ class ParserLattes(HTMLParser):
     listaAreaDeAtuacao = []
     listaIdioma = []
     listaPremioOuTitulo = []
+    listaLinhaDePesquisa = []
 
     listaArtigoEmPeriodico = []
     listaLivroPublicado = []
@@ -235,6 +238,7 @@ class ParserLattes(HTMLParser):
         self.listaAreaDeAtuacao = []
         self.listaIdioma = []
         self.listaPremioOuTitulo = []
+        self.listaLinhaDePesquisa = []
 
         self.listaArtigoEmPeriodico = []
         self.listaLivroPublicado = []
@@ -389,7 +393,7 @@ class ParserLattes(HTMLParser):
 
                 if name=='class' and (value=='layout-cell-pad-5 text-align-right' or value=='layout-cell-pad-6 text-align-right'): #update on Lattes HTML format 20/03/2024
                     self.item = ''
-                    if self.achouFormacaoAcademica or self.achouAtuacaoProfissional or self.achouProjetoDePesquisa or self.achouProjetoDeExtensao or self.achouProjetoDeDesenvolvimento or self.achouMembroDeCorpoEditorial or self.achouRevisorDePeriodico or self.achouAreaDeAtuacao or self.achouIdioma or self.achouPremioOuTitulo or self.salvarItem:
+                    if self.achouFormacaoAcademica or self.achouAtuacaoProfissional or self.achouProjetoDePesquisa or self.achouProjetoDeExtensao or self.achouProjetoDeDesenvolvimento or self.achouMembroDeCorpoEditorial or self.achouRevisorDePeriodico or self.achouAreaDeAtuacao or self.achouIdioma or self.achouPremioOuTitulo or self.achouLinhaDePesquisa or self.salvarItem:
                         self.salvarParte1 = 1
                         self.salvarParte2 = 0
                         if not self.salvarParte3:
@@ -412,6 +416,7 @@ class ParserLattes(HTMLParser):
             self.achouAreaDeAtuacao = 0
             self.achouIdioma = 0
             self.achouPremioOuTitulo = 0
+            self.achouLinhaDePesquisa = 0
             self.achouProducoes = 0
             #self.achouProducaoEmCTA = 0
             #self.achouProducaoTecnica = 0
@@ -582,6 +587,24 @@ class ParserLattes(HTMLParser):
                         self.listaPremioOuTitulo.append(iessimoPremio) # acrescentamos o objeto de PremioOuTitulo
                         self.partesDoItem = []  # limpamos a lista
                         self.achouPremioOuTitulo = 0
+
+                    if self.achouLinhaDePesquisa and len(self.partesDoItem)>=1:
+                        # Verifica se é apenas um objetivo para a linha anterior
+                        if (len(self.partesDoItem) == 1 and 
+                            self.partesDoItem[0].startswith('Objetivo:') and 
+                            len(self.listaLinhaDePesquisa) > 0):
+                            # É um objetivo para a linha anterior
+                            objetivo_texto = self.partesDoItem[0].replace('Objetivo:', '').strip()
+                            self.listaLinhaDePesquisa[-1].objetivo = objetivo_texto
+                        else:
+                            # É uma nova linha de pesquisa
+                            iessimaLinhaDePesquisa = LinhaDePesquisa(self.partesDoItem)
+                            # Só adiciona se o nome não for vazio ou None
+                            if iessimaLinhaDePesquisa.nome and iessimaLinhaDePesquisa.nome.strip():
+                                self.listaLinhaDePesquisa.append(iessimaLinhaDePesquisa)
+                        
+                        self.partesDoItem = []  # limpamos a lista
+                        # Não resetamos self.achouLinhaDePesquisa = 0 aqui para permitir múltiplas linhas
 
 
 
@@ -794,6 +817,8 @@ class ParserLattes(HTMLParser):
                 self.achouAreaDeAtuacao = 1
             if 'Idiomas'==dado:
                 self.achouIdioma = 1
+            if 'Linhas de pesquisa'==dado:
+                self.achouLinhaDePesquisa = 1
             if 'Prêmios e títulos'==dado:
                 self.achouPremioOuTitulo = 1
             if 'Produções'==dado:  # !---
