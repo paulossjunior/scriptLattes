@@ -679,8 +679,12 @@ class Grupo:
                     } for item in membro.listaOrganizacaoDeEvento]
                 },
                 'bancas': {
-                    'trabalho_conclusao': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho],
-                    'comissoes_julgadoras': [item.json() for item in membro.listaParticipacaoEmBancaComissao]
+                    'mestrado': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho + membro.listaParticipacaoEmBancaComissao if item.obter_tipo() == "Mestrado"],
+                    'doutorado': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho + membro.listaParticipacaoEmBancaComissao if item.obter_tipo() == "Tese de Doutorado"],
+                    'qualificacao_doutorado': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho + membro.listaParticipacaoEmBancaComissao if item.obter_tipo() == "Qualificação de Doutorado"],
+                    'qualificacao_mestrado': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho + membro.listaParticipacaoEmBancaComissao if item.obter_tipo() == "Qualificação de Mestrado"],
+                    'graduacao': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho + membro.listaParticipacaoEmBancaComissao if item.obter_tipo() == "Trabalho de Conclusão de Curso de Graduação"],
+                    'outras': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho + membro.listaParticipacaoEmBancaComissao if item.obter_tipo() == "Participação em banca"]
                 },
                 'estatisticas': {
                     'total_artigos_periodicos': len(membro.listaArtigoEmPeriodico),
