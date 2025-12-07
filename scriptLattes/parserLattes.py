@@ -46,6 +46,10 @@ from .eventos.organizacaoDeEvento import *
 from .eventos.organizacaoDeEvento import *
 from .eventos.participacaoEmEvento import *
 
+from .patentesRegistros.patente import *
+from .patentesRegistros.programaComputador import *
+from .patentesRegistros.desenhoIndustrial import *
+
 from .producoesUnitarias.participacaoEmBanca import *
 
 sys.tracebacklimit = 0
@@ -469,6 +473,9 @@ class ParserLattes(HTMLParser):
             self.achouOutrasInformacoesRelevantes = 0
             self.salvarItem = 0
             self.achouPatenteRegistro = 0
+            self.achouPatente = 0
+            self.achouProgramaComputador = 0
+            self.achouDesenhoIndustrial = 0
 
         if tag=='img':
             if self.salvarFoto:
@@ -664,17 +671,17 @@ class ParserLattes(HTMLParser):
 
 
 
-                        # if self.achouPatenteRegistro:
-                    #	#print "===>>>> PROCESSANDO PATENTE e REGISTRO"
-                    #	if self.achouPatente:
-                    #		iessimoItem = Patente(self.idMembro, self.partesDoItem, self.relevante)
-                    #		self.listaPatente.append(iessimoItem)
-                    #	if self.achouProgramaComputador:
-                    #		iessimoItem = ProgramaComputador(self.idMembro, self.partesDoItem, self.relevante)
-                    #		self.listaProgramaComputador.append(iessimoItem)
-                    #	if self.achouDesenhoIndustrial:
-                    #		iessimoItem = DesenhoIndustrial(self.idMembro, self.partesDoItem, self.relevante)
-                    #		self.listaDesenhoIndustrial.append(iessimoItem)
+                        if self.achouPatenteRegistro:
+                            #print "===>>>> PROCESSANDO PATENTE e REGISTRO"
+                            if self.achouPatente:
+                                iessimoItem = Patente(self.idMembro, self.partesDoItem, self.relevante)
+                                self.listaPatente.append(iessimoItem)
+                            if self.achouProgramaComputador:
+                                iessimoItem = ProgramaComputador(self.idMembro, self.partesDoItem, self.relevante)
+                                self.listaProgramaComputador.append(iessimoItem)
+                            if self.achouDesenhoIndustrial:
+                                iessimoItem = DesenhoIndustrial(self.idMembro, self.partesDoItem, self.relevante)
+                                self.listaDesenhoIndustrial.append(iessimoItem)
 
                     if self.achouProducoes:
                         if self.achouProducaoEmCTA:

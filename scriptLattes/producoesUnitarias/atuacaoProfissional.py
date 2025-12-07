@@ -11,6 +11,9 @@ class AtuacaoProfissional:
     idMembro = None
 
     instituicao = None
+    instituicao_nome = None
+    instituicao_sigla = None
+    instituicao_pais = None
     vinculo = None
     periodo = None
     enquadramento = None
@@ -29,14 +32,36 @@ class AtuacaoProfissional:
 
         if partesDoItem:
             print(f"DEBUG: AtuacaoProfissional partesDoItem: {partesDoItem}")
-            # partesDoItem[0]: Numero (NAO USADO)
+            # partesDoItem[0]: Pode ser periodo ou numero
             # partesDoItem[1]: Descricao
             self.item = partesDoItem[1]
+            
+            # Verificar se partesDoItem[0] contém um período válido
+            periodo_from_part0 = None
+            if len(partesDoItem) > 0:
+                parte0 = partesDoItem[0].strip()
+                # Verificar se é um período válido (formato YYYY - YYYY ou YYYY - Atual, etc.)
+                import re
+                periodo_pattern = r'^(\d{4}(?:/\d{2})?\s*-\s*(?:\d{4}(?:/\d{2})?|Atual|atual)|\d{2}/\d{4}\s*-\s*(?:\d{2}/\d{4}|Atual|atual))$'
+                if re.match(periodo_pattern, parte0):
+                    periodo_from_part0 = parte0
+            
+            # Parse do item principal
             self._parse_item(self.item)
+            
+            # Se não encontrou período no texto e temos um período válido em partesDoItem[0]
+            if not self.periodo and periodo_from_part0:
+                self.periodo = periodo_from_part0
+                # Extrair anos do período encontrado
+                self._extract_years_from_periodo(self.periodo)
+            
             self.chave = f"{self.instituicao or ''}::{self.periodo or ''}::{self.cargo_funcao or ''}"
         else:
             self.item = ''
             self.instituicao = ''
+            self.instituicao_nome = ''
+            self.instituicao_sigla = ''
+            self.instituicao_pais = ''
             self.vinculo = ''
             self.periodo = ''
             self.enquadramento = ''
@@ -65,15 +90,26 @@ class AtuacaoProfissional:
             # Fallback: capturar texto antes de "Vínculo" ou "VÃ­nculo"
             fallback_match = re.search(r'^(.*?)(?=\s*V[^:]*nculo\s*:)', texto, re.DOTALL)
             if fallback_match:
-                self.instituicao = fallback_match.group(1).strip()
+                instituicao_text = fallback_match.group(1).strip()
+                # Remover período do início se presente (formato: "YYYY - YYYY, Instituição" ou "YYYY - Atual, Instituição")
+                instituicao_text = re.sub(r'^\d{4}\s*-\s*(?:\d{4}|Atual),?\s*', '', instituicao_text)
+                instituicao_text = re.sub(r'^\d{2}/\d{4}\s*-\s*(?:\d{2}/\d{4}|Atual),?\s*', '', instituicao_text)
+                self.instituicao = instituicao_text.strip()
             else:
-                # Último recurso: primeira linha em negrito ou até ponto
+                # Último recurso: primeira linha em negrito ou até ponto, mas removendo período inicial
                 match = re.search(r'^([^\.]+)', texto)
                 if match:
-                    self.instituicao = match.group(1).strip()
+                    instituicao_text = match.group(1).strip()
+                    # Remover período do início se presente
+                    instituicao_text = re.sub(r'^\d{4}\s*-\s*(?:\d{4}|Atual),?\s*', '', instituicao_text)
+                    instituicao_text = re.sub(r'^\d{2}/\d{4}\s*-\s*(?:\d{2}/\d{4}|Atual),?\s*', '', instituicao_text)
+                    self.instituicao = instituicao_text.strip()
         
         if not self.instituicao:
             print(f"DEBUG: Instituicao not found in text: {texto!r}")
+        
+        # Parse da instituição em nome, sigla e país
+        self._parse_instituicao()
 
         # Extrair período - múltiplos padrões para HTML
         periodo_patterns = [
@@ -177,6 +213,79 @@ class AtuacaoProfissional:
         if atividades_encontradas:
             self.atividades = atividades_encontradas
 
+    def _parse_instituicao(self):
+        """Parse da instituição em nome, sigla e país"""
+        if not self.instituicao:
+            return
+        
+        instituicao_texto = self.instituicao.strip()
+        
+        # Padrão comum: "Nome da Instituição, SIGLA, País."
+        # Exemplo: "Universidade Federal do Estado do Rio de Janeiro, UNIRIO, Brasil."
+        
+        # Remover ponto final se presente
+        if instituicao_texto.endswith('.'):
+            instituicao_texto = instituicao_texto[:-1]
+        
+        # Encontrar primeiro vírgula para separar a parte principal
+        primeira_virgula = instituicao_texto.find(',')
+        if primeira_virgula == -1:
+            # Não há vírgulas, apenas o nome
+            self.instituicao_nome = instituicao_texto.strip()
+            return
+        
+        # Extrair o nome (tudo antes da primeira vírgula)
+        self.instituicao_nome = instituicao_texto[:primeira_virgula].strip()
+        
+        # Processar o resto (após primeira vírgula)
+        resto = instituicao_texto[primeira_virgula + 1:].strip()
+        
+        # Dividir o resto por vírgulas
+        partes_resto = [p.strip() for p in resto.split(',')]
+        
+        if len(partes_resto) >= 2:
+            # Padrão: Nome, Sigla, País
+            self.instituicao_sigla = partes_resto[0].strip()
+            self.instituicao_pais = partes_resto[1].strip()
+        elif len(partes_resto) == 1:
+            # Apenas uma parte após o nome
+            # Verificar se é um país comum
+            parte = partes_resto[0].strip().lower()
+            paises_comuns = ['brasil', 'brazil', 'espanha', 'spain', 'eua', 'usa', 'portugal', 'frança', 'france']
+            
+            if any(pais in parte for pais in paises_comuns):
+                # É um país
+                self.instituicao_pais = partes_resto[0].strip()
+            else:
+                # Provavelmente é uma sigla
+                self.instituicao_sigla = partes_resto[0].strip()
+
+    def _extract_years_from_periodo(self, periodo_texto):
+        """Extrai anos de início e fim do texto de período"""
+        if not periodo_texto:
+            return
+            
+        periodo_limpo = periodo_texto.replace(' ', '')
+        if '-' in periodo_limpo:
+            partes = periodo_limpo.split('-')
+            inicio = partes[0].strip()
+            fim = partes[1].strip() if len(partes) > 1 else ''
+            
+            # Extrair ano de início
+            if '/' in inicio:  # Formato MM/YYYY
+                self.ano_inicio = inicio.split('/')[1] if '/' in inicio else inicio
+            elif inicio.isdigit() and len(inicio) == 4:  # Formato YYYY
+                self.ano_inicio = inicio
+            
+            # Extrair ano de fim
+            if fim and fim.lower() != 'atual':
+                if '/' in fim:  # Formato MM/YYYY
+                    self.ano_fim = fim.split('/')[1] if '/' in fim else fim
+                elif fim.isdigit() and len(fim) == 4:  # Formato YYYY
+                    self.ano_fim = fim
+            else:
+                self.ano_fim = 'Atual'
+
     def compararCom(self, objeto):
         if self.idMembro.isdisjoint(objeto.idMembro) and similaridade_entre_cadeias(self.item or '', objeto.item or ''):
             # Une conjuntos de membros
@@ -197,6 +306,9 @@ class AtuacaoProfissional:
 
         result = {
             "instituicao": nv(self.instituicao),
+            "instituicao_nome": nv(self.instituicao_nome),
+            "instituicao_sigla": nv(self.instituicao_sigla),
+            "instituicao_pais": nv(self.instituicao_pais),
             "periodo": nv(self.periodo),
             "ano_inicio": nv(self.ano_inicio),
             "ano_fim": nv(self.ano_fim),
