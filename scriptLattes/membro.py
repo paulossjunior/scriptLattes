@@ -97,6 +97,10 @@ class Membro:
     listaParticipacaoEmEvento = []
     listaOrganizacaoDeEvento = []
 
+    # Bancas
+    listaParticipacaoEmBancaTrabalho = []
+    listaParticipacaoEmBancaComissao = []
+
     rotuloCorFG = ''
     rotuloCorBG = ''
 
@@ -256,6 +260,10 @@ class Membro:
         self.listaParticipacaoEmEvento = parser.listaParticipacaoEmEvento
         self.listaOrganizacaoDeEvento = parser.listaOrganizacaoDeEvento
 
+        # Bancas
+        self.listaParticipacaoEmBancaTrabalho = parser.listaParticipacaoEmBancaTrabalho
+        self.listaParticipacaoEmBancaComissao = parser.listaParticipacaoEmBancaComissao
+
         # -----------------------------------------------------------------------------------------
         nomePrimeiraGrandeArea = ""
         nomePrimeiraArea = ""
@@ -334,6 +342,9 @@ class Membro:
 
         self.listaParticipacaoEmEvento = self.filtrarItems(self.listaParticipacaoEmEvento)
         self.listaOrganizacaoDeEvento = self.filtrarItems(self.listaOrganizacaoDeEvento)
+
+        self.listaParticipacaoEmBancaTrabalho = self.filtrarItems(self.listaParticipacaoEmBancaTrabalho)
+        self.listaParticipacaoEmBancaComissao = self.filtrarItems(self.listaParticipacaoEmBancaComissao)
 
 
     def filtrarItems(self, lista):
@@ -533,6 +544,8 @@ class Membro:
             s += "\t    - Participação em eventos                     : " + str(len(self.listaParticipacaoEmEvento))
             s += "\n    - Produção artística/cultural                 : " + str(len(self.listaProducaoArtistica))
             s += "\t    - Organização de eventos                      : " + str(len(self.listaOrganizacaoDeEvento))
+            s += "\n    - Participação em bancas de trabalho          : " + str(len(self.listaParticipacaoEmBancaTrabalho))
+            s += "\t    - Participação em bancas de comissões         : " + str(len(self.listaParticipacaoEmBancaComissao))
             s += "\n"
         """
         return s

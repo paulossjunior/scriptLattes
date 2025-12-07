@@ -3,7 +3,7 @@
 
 
 import fileinput
-import tqdm
+
 import json
 import re
 import os
@@ -677,6 +677,10 @@ class Grupo:
                         'natureza': getattr(item, 'natureza', ''),
                         'tipo': getattr(item, 'tipo', '')
                     } for item in membro.listaOrganizacaoDeEvento]
+                },
+                'bancas': {
+                    'trabalho_conclusao': [item.json() for item in membro.listaParticipacaoEmBancaTrabalho],
+                    'comissoes_julgadoras': [item.json() for item in membro.listaParticipacaoEmBancaComissao]
                 },
                 'estatisticas': {
                     'total_artigos_periodicos': len(membro.listaArtigoEmPeriodico),

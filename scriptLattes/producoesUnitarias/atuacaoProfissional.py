@@ -28,6 +28,7 @@ class AtuacaoProfissional:
         self.idMembro.add(idMembro)
 
         if partesDoItem:
+            print(f"DEBUG: AtuacaoProfissional partesDoItem: {partesDoItem}")
             # partesDoItem[0]: Numero (NAO USADO)
             # partesDoItem[1]: Descricao
             self.item = partesDoItem[1]
@@ -70,6 +71,9 @@ class AtuacaoProfissional:
                 match = re.search(r'^([^\.]+)', texto)
                 if match:
                     self.instituicao = match.group(1).strip()
+        
+        if not self.instituicao:
+            print(f"DEBUG: Instituicao not found in text: {texto!r}")
 
         # Extrair período - múltiplos padrões para HTML
         periodo_patterns = [
